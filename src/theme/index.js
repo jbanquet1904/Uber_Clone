@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #2
+// AI-assisted: see docs/AI_LOG.md #1
 export const colors = {
   primary: '#1C2430',
   text: '#1C2430',

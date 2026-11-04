@@ -25,9 +25,11 @@ Run lint and typecheck before declaring any task done.
 
 ## Navigation & Routing
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
+- This project uses **React Navigation 7** (not Expo Router). Navigators live in `src/navigation/`, screens in `src/screens/`, and `App.js` mounts `NavigationContainer`.
+- Stack (`@react-navigation/native-stack`) for the trip flow, bottom tabs for the registration, and drawer for the main menu.
+- `RootNavigator` switches screen groups from the driver's status in `DriverContext` (conditional navigation); don't `navigate` between those groups.
+- Route names in English; visible text goes in `title`.
+- Docs: https://reactnavigation.org/docs/getting-started
 
 ## Building with EAS
 
