@@ -1,6 +1,6 @@
-// AI-assisted: see docs/AI_LOG.md #3
+// AI-assisted: see docs/AI_LOG.md #3, #4
 import { useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Keyboard, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import FormField from './FormField';
@@ -35,45 +35,76 @@ export default function DateField({ label, value, onChange, onClose, error, hint
     close();
   };
 
+  const openPicker = () => {
+    Keyboard.dismiss(); // el phone-pad de iPhone no tiene tecla para cerrarse
+    setOpen(true);
+  };
+
   return (
     <FormField label={label} error={error} hint={hint}>
-      <Pressable style={[formStyles.input, formStyles.row, error && formStyles.inputError]} onPress={() => setOpen(true)}>
+      <Pressable style={[formStyles.input, formStyles.row, error && formStyles.inputError]} onPress={openPicker}>
         <Text style={value ? formStyles.value : formStyles.placeholder}>{value ? formatDate(value) : 'Selecciona una fecha'}</Text>
         <Ionicons name="calendar-outline" size={18} color={colors.textMuted} />
       </Pressable>
 
-      {open && (
-        <View style={isIOS ? styles.iosContainer : null}>
-          <DateTimePicker
-            value={pickerValue}
-            mode="date"
-            display={isIOS ? 'spinner' : 'default'}
-            maximumDate={maximumDate}
-            minimumDate={minimumDate}
-            onValueChange={handleValueChange}
-            onDismiss={close}
-            locale="es-CO"
-            themeVariant="light"
-          />
-          {isIOS && (
-            <Pressable style={styles.done} onPress={confirmIOS}>
-              <Text style={styles.doneText}>Listo</Text>
-            </Pressable>
-          )}
-        </View>
+      {open && !isIOS && (
+        <DateTimePicker
+          value={pickerValue}
+          mode="date"
+          maximumDate={maximumDate}
+          minimumDate={minimumDate}
+          onValueChange={handleValueChange}
+          onDismiss={close}
+        />
+      )}
+
+      {isIOS && (
+        <Modal visible={open} transparent animationType="slide" onRequestClose={close}>
+          <View style={styles.overlay}>
+            {/* Tocar el fondo oscuro cierra sin elegir */}
+            <Pressable style={StyleSheet.absoluteFill} onPress={close} />
+            <View style={styles.sheet}>
+              <View style={styles.sheetHeader}>
+                <Text style={styles.sheetTitle}>{label}</Text>
+                <Pressable onPress={confirmIOS} hitSlop={10}>
+                  <Text style={styles.doneText}>Listo</Text>
+                </Pressable>
+              </View>
+              <DateTimePicker
+                value={pickerValue}
+                mode="date"
+                display="spinner"
+                maximumDate={maximumDate}
+                minimumDate={minimumDate}
+                onValueChange={handleValueChange}
+                locale="es-CO"
+                themeVariant="light"
+              />
+            </View>
+          </View>
+        </Modal>
       )}
     </FormField>
   );
 }
 
 const styles = StyleSheet.create({
-  iosContainer: {
-    marginTop: 8,
+  overlay: { flex: 1, backgroundColor: 'rgba(28,36,48,0.45)', justifyContent: 'flex-end' },
+  sheet: {
     backgroundColor: colors.surface,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingBottom: 34,
   },
-  done: { alignSelf: 'flex-end', paddingHorizontal: 16, paddingVertical: 10 },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  sheetTitle: { fontSize: 17, fontWeight: '700', color: colors.text },
   doneText: { fontSize: 16, fontWeight: '700', color: colors.primary },
 });

@@ -1,6 +1,6 @@
-// AI-assisted: see docs/AI_LOG.md #3
+// AI-assisted: see docs/AI_LOG.md #3, #4
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FormField from './FormField';
 import { formStyles } from './formStyles';
@@ -16,9 +16,14 @@ export default function SelectField({ label, value, options, onChange, error, hi
     setOpen(false);
   };
 
+  const openList = () => {
+    Keyboard.dismiss(); // si vienes del celular, el teclado quedaría encima de la hoja
+    setOpen(true);
+  };
+
   return (
     <FormField label={label} error={error} hint={hint}>
-      <Pressable style={[formStyles.input, formStyles.row, error && formStyles.inputError]} onPress={() => setOpen(true)}>
+      <Pressable style={[formStyles.input, formStyles.row, error && formStyles.inputError]} onPress={openList}>
         <Text style={selected ? formStyles.value : formStyles.placeholder}>{selected ? selected.label : placeholder}</Text>
         <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
       </Pressable>
