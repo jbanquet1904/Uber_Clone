@@ -23,7 +23,16 @@
     },
     "plugins": [
       "expo-status-bar",
-      "expo-font"
+      "expo-font",
+      "@react-native-community/datetimepicker",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "UberClone usa tus fotos para la foto de perfil, la del vehículo y tus documentos.",
+          "cameraPermission": "UberClone usa la cámara para tomar tu foto de perfil, la del vehículo y tus documentos.",
+          "microphonePermission": false
+        }
+      ]
     ]
   }
 }
