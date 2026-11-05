@@ -1,5 +1,8 @@
-// AI-assisted: see docs/AI_LOG.md #3
-import { MAX_NAME_LENGTH, MIN_DRIVER_AGE } from '../config/registrationOptions';
+// AI-assisted: see docs/AI_LOG.md #3, #5
+import {
+  MAX_NAME_LENGTH, MIN_DRIVER_AGE,
+  MIN_VEHICLE_YEAR, MAX_BRAND_MODEL_LENGTH, MAX_CAPACITY, MIN_CAPACITY_BY_CATEGORY,
+} from '../config/registrationOptions';
 
 // Letras con tildes, ñ y diéresis, más espacios
 const LETTERS_AND_SPACES = /^[A-Za-zÁÉÍÓÚáéíóúÑñÜü ]+$/;
@@ -49,6 +52,47 @@ export function validatePersonal(data, today = new Date()) {
   else if (!EMAIL.test(email)) errors.email = 'Revisa el correo: debe tener @ y un dominio, como nombre@correo.com.';
 
   if (isEmpty(data.language)) errors.language = 'Selecciona un idioma.';
+
+  return errors;
+}
+
+// Placa de carro colombiana: 3 letras y 3 números, como ABC123
+const PLATE = /^[A-Z]{3}\d{3}$/;
+
+// Mayúsculas y sin espacios ni guiones: "abc-123" queda "ABC123"
+export const normalizePlate = (text) => text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+
+export function validateVehicle(data, today = new Date()) {
+  const errors = {};
+
+  if (isEmpty(data.category)) errors.category = 'Selecciona una categoría.';
+
+  const plate = (data.plate ?? '').toUpperCase();
+  if (!plate) errors.plate = 'Escribe la placa.';
+  else if (!PLATE.test(plate)) errors.plate = 'Formato ABC123: 3 letras y 3 números.';
+
+  [['brand', 'la marca'], ['model', 'el modelo']].forEach(([field, name]) => {
+    const value = (data[field] ?? '').trim();
+    if (!value) errors[field] = `Escribe ${name}.`;
+    else if (value.length > MAX_BRAND_MODEL_LENGTH) errors[field] = `Máximo ${MAX_BRAND_MODEL_LENGTH} caracteres.`;
+  });
+
+  const currentYear = today.getFullYear();
+  if (isEmpty(data.year)) errors.year = 'Escribe el año del vehículo.';
+  else if (!/^\d{4}$/.test(data.year)) errors.year = 'Debe tener 4 dígitos.';
+  else if (Number(data.year) > currentYear) errors.year = `No puede ser mayor a ${currentYear}.`;
+  else if (Number(data.year) < MIN_VEHICLE_YEAR) errors.year = `Debe ser modelo ${MIN_VEHICLE_YEAR} o posterior.`;
+
+  if (isEmpty(data.color)) errors.color = 'Selecciona un color.';
+
+  // El mínimo depende de la categoría: por eso se valida aquí y no en el campo
+  const minCapacity = MIN_CAPACITY_BY_CATEGORY[data.category] ?? 1;
+  if (isEmpty(data.capacity)) errors.capacity = 'Escribe la capacidad de pasajeros.';
+  else if (Number(data.capacity) < minCapacity)
+    errors.capacity = `Esta categoría exige mínimo ${minCapacity} ${minCapacity === 1 ? 'pasajero' : 'pasajeros'}.`;
+  else if (Number(data.capacity) > MAX_CAPACITY) errors.capacity = `Máximo ${MAX_CAPACITY} pasajeros.`;
+
+  if (!data.vehiclePhoto) errors.vehiclePhoto = 'Agrega una foto del vehículo donde se vea la placa.';
 
   return errors;
 }

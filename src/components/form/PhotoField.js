@@ -1,6 +1,6 @@
-// AI-assisted: see docs/AI_LOG.md #3
+// AI-assisted: see docs/AI_LOG.md #3, #5
 import { useState } from 'react';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import FormField from './FormField';
@@ -20,6 +20,7 @@ export default function PhotoField({ label, value, onChange, error, hint, aspect
   const [permissionError, setPermissionError] = useState('');
 
   const pick = async (source) => {
+    Keyboard.dismiss(); // igual que en la fecha: el teclado no debe quedar abierto encima
     setPermissionError('');
     const permission =
       source === 'camera'
