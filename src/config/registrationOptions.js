@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #3, #5
+// AI-assisted: see docs/AI_LOG.md #3, #5, #6
 import { PRICING } from './pricing';
 
 export const GENDERS = [
@@ -46,3 +46,7 @@ export const VEHICLE_COLORS = [
   { label: 'Naranja', value: 'orange' },
   { label: 'Otro', value: 'other' },
 ];
+
+// Primera revisión técnico-mecánica de carros particulares, en años desde la matrícula.
+// Ley 2294 de 2023 (5 años) para matriculados desde el 19-may-2023; antes, Decreto 019 de 2012 (6 años).
+export const RTM_FIRST_REVIEW = { newRuleFromModelYear: 2024, yearsNewRule: 5, yearsOldRule: 6 };

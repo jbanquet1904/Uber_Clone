@@ -1,9 +1,9 @@
-// AI-assisted: see docs/AI_LOG.md #2, #3, #5
+// AI-assisted: see docs/AI_LOG.md #2, #3, #5, #6
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import Placeholder from '../screens/Placeholder';
 import PersonalDataScreen from '../screens/registration/PersonalDataScreen';
 import VehicleScreen from '../screens/registration/VehicleScreen';
+import DocumentsScreen from '../screens/registration/DocumentsScreen';
 import { RegistrationProvider, useRegistration } from '../context/RegistrationContext';
 import { colors } from '../theme';
 
@@ -16,7 +16,7 @@ const tabIcon = (name, complete) =>
   };
 
 function RegistrationTabNavigator() {
-  const { isPersonalValid, isVehicleValid } = useRegistration();
+  const { isPersonalValid, isVehicleValid, isDocumentsValid } = useRegistration();
 
   return (
     <Tab.Navigator
@@ -38,8 +38,8 @@ function RegistrationTabNavigator() {
       />
       <Tab.Screen
         name="Documents"
-        component={Placeholder}
-        options={{ title: 'Documentos', tabBarIcon: tabIcon('document-text-outline', false) }}
+        component={DocumentsScreen}
+        options={{ title: 'Documentos', tabBarIcon: tabIcon('document-text-outline', isDocumentsValid) }}
       />
     </Tab.Navigator>
   );
