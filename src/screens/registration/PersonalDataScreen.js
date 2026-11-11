@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #3
+// AI-assisted: see docs/AI_LOG.md #3, #9
 import { useCallback, useMemo, useRef, useState } from 'react';
 import FormScreen from '../../components/FormScreen';
 import PrimaryButton from '../../components/PrimaryButton';
@@ -7,6 +7,7 @@ import TextField from '../../components/form/TextField';
 import DateField from '../../components/form/DateField';
 import SelectField from '../../components/form/SelectField';
 import { useRegistration } from '../../context/RegistrationContext';
+import { useDriver } from '../../context/DriverContext';
 import { GENDERS, LANGUAGES, MAX_NAME_LENGTH, MIN_DRIVER_AGE } from '../../config/registrationOptions';
 import { onlyDigits } from '../../utils/registrationValidators';
 
@@ -14,6 +15,8 @@ const FIELDS = ['profilePhoto', 'fullName', 'documentNumber', 'phone', 'birthDat
 
 export default function PersonalDataScreen({ navigation }) {
   const { personal, personalErrors, touched, isPersonalValid, updatePersonal, touchField, touchAll } = useRegistration();
+  // Aviso de por qué volvió al registro, por ejemplo si borraron su documento en la base de datos
+  const { sessionNotice } = useDriver();
   const [triedNext, setTriedNext] = useState(false);
   const documentRef = useRef(null);
   const phoneRef = useRef(null);
@@ -45,7 +48,7 @@ export default function PersonalDataScreen({ navigation }) {
 
   return (
     <FormScreen
-      notice={triedNext && !isPersonalValid ? 'Revisa los campos marcados en rojo.' : null}
+      notice={triedNext && !isPersonalValid ? 'Revisa los campos marcados en rojo.' : sessionNotice}
       footer={<PrimaryButton title="Siguiente: Vehículo" onPress={handleNext} />}
     >
       <PhotoField

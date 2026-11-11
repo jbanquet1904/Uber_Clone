@@ -1,17 +1,12 @@
-// AI-assisted: see docs/AI_LOG.md #2
-import { View, Text, Button } from 'react-native';
-import { useDriver } from '../context/DriverContext';
+// AI-assisted: see docs/AI_LOG.md #2, #9
+import { Text, View } from 'react-native';
 
-export default function Placeholder({ route, navigation }) {
-  const { setDriver } = useDriver();
-
+// Pantalla temporal: solo dice su nombre hasta que se haga la de verdad.
+// Los botones de "Simular" se quitaron: ahora el estado lo manda Firestore
+export default function Placeholder({ route }) {
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
       <Text style={{ fontSize: 20 }}>{route.name}</Text>
-      {/* Botones temporales para probar el flujo; se borran después */}
-      <Button title="Simular registro" onPress={() => setDriver({ status: 'pending' })} />
-      <Button title="Simular aprobación" onPress={() => setDriver({ status: 'approved' })} />
-      <Button title="Cerrar sesión" onPress={() => setDriver(null)} />
     </View>
   );
 }

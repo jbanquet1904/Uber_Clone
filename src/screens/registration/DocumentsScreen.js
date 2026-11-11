@@ -1,5 +1,5 @@
-// AI-assisted: see docs/AI_LOG.md #6
-import { useCallback, useMemo } from 'react';
+// AI-assisted: see docs/AI_LOG.md #6, #8, #9
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import FormScreen from '../../components/FormScreen';
 import PrimaryButton from '../../components/PrimaryButton';
@@ -11,14 +11,22 @@ import { useRegistration } from '../../context/RegistrationContext';
 import { useDriver } from '../../context/DriverContext';
 import { PRICING } from '../../config/pricing';
 import { onlyDigits, requiresTechReview } from '../../utils/registrationValidators';
+import { newDriverId, registrationErrorMessage, submitRegistration } from '../../services/driverRegistration';
 import { colors } from '../../theme';
 
 // Math.round: multiplicar decimales a veces da 20.000000000000004
 const COMMISSION_PERCENT = Math.round(PRICING.commissionRate * 100);
 
 export default function DocumentsScreen({ navigation }) {
-  const { vehicle, documents, documentsErrors, touched, pendingTabs, updateDocuments, touchField, touchAll } = useRegistration();
-  const { setDriver } = useDriver();
+  const { personal, vehicle, documents, documentsErrors, touched, pendingTabs, updateDocuments, touchField, touchAll } =
+    useRegistration();
+  const { startSession } = useDriver();
+
+  const submittingRef = useRef(false); // candado inmediato: dos toques seguidos entran antes de que el botón se deshabilite
+  const driverIdRef = useRef(null); // mismo ID en todos los reintentos
+  const uploadCacheRef = useRef({}); // fotos que ya subieron
+  const [submitting, setSubmitting] = useState(false); // solo para la interfaz: botón y texto
+  const [submitError, setSubmitError] = useState(null);
 
   // Mañana como mínimo y como fecha inicial: si toca "Listo" sin mover la rueda, no guarda hoy (que ya cuenta como vencido)
   const tomorrow = useMemo(() => {
@@ -49,11 +57,33 @@ export default function DocumentsScreen({ navigation }) {
     [touchAll, navigation]
   );
 
-  // 3A: por ahora solo deja la cuenta en Pendiente. En la 3B el guardado en Firestore va antes del setDriver,
-  // porque setDriver desmonta las pestañas y el RegistrationProvider pierde los datos
-  const handleSubmit = useCallback(() => {
-    if (canSubmit) setDriver({ status: 'pending' });
-  }, [canSubmit, setDriver]);
+  // Primero Firestore, después la sesión: startSession desmonta las pestañas y se pierden los datos
+  const handleSubmit = useCallback(async () => {
+    if (!canSubmit || submittingRef.current) return;
+    submittingRef.current = true;
+    setSubmitting(true);
+    setSubmitError(null);
+
+    if (!driverIdRef.current) driverIdRef.current = newDriverId();
+
+    try {
+      await submitRegistration({
+        driverId: driverIdRef.current,
+        personal,
+        vehicle,
+        documents,
+        uploadCache: uploadCacheRef.current,
+      });
+      // Guarda la sesión en el teléfono. Si falla cae en el catch y el reintento no duplica nada (mismo ID, fotos en caché).
+      // Si sale bien no se suelta el candado: el RootNavigator desmonta el registro
+      await startSession({ id: driverIdRef.current, status: 'pending' });
+    } catch (error) {
+      console.warn('Error al enviar el registro:', error);
+      setSubmitError(registrationErrorMessage(error));
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  }, [canSubmit, personal, vehicle, documents, startSession]);
 
   const expiryField = (field, label) => (
     <DateField
@@ -71,6 +101,7 @@ export default function DocumentsScreen({ navigation }) {
     <FormScreen
       footer={
         <View>
+          {submitError && <Text style={styles.submitError}>{submitError}</Text>}
           {!canSubmit && (
             <View style={styles.pending}>
               <Text style={styles.pendingTitle}>Para enviar te falta completar:</Text>
@@ -81,7 +112,11 @@ export default function DocumentsScreen({ navigation }) {
               ))}
             </View>
           )}
-          <PrimaryButton title="Enviar registro" onPress={handleSubmit} disabled={!canSubmit} />
+          <PrimaryButton
+            title={submitting ? 'Enviando registro…' : 'Enviar registro'}
+            onPress={handleSubmit}
+            disabled={!canSubmit || submitting}
+          />
         </View>
       }
     >
@@ -163,4 +198,5 @@ const styles = StyleSheet.create({
   pending: { marginBottom: 12, alignItems: 'center', gap: 4 },
   pendingTitle: { fontSize: 13, color: colors.textMuted },
   pendingLink: { fontSize: 15, fontWeight: '600', color: colors.error },
+  submitError: { fontSize: 14, color: colors.error, textAlign: 'center', marginBottom: 10, lineHeight: 20 },
 });
