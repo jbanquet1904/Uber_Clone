@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { db } from '../config/configFireBase';
+import { deleteRegistration } from '../services/driverRegistration';
 
 const SESSION_KEY = '@uberclone/driver-session';
 const DriverContext = createContext(null);
@@ -64,6 +65,22 @@ export function DriverProvider({ children }) {
     setDriver(null);
   }, []);
 
+  // Cancelar la solicitud: primero se borra en Firestore y solo si eso funciona se cierra la sesión.
+  // Si fallara (sin internet), el conductor sigue en Pendiente y puede reintentar: no queda un documento huérfano
+  const cancelRegistration = useCallback(async () => {
+    const id = sessionIdRef.current;
+    if (!id) return;
+    // Se suelta antes de borrar: así el listener no confunde este borrado con uno hecho en la consola
+    sessionIdRef.current = null;
+    try {
+      await deleteRegistration(id);
+    } catch (error) {
+      sessionIdRef.current = id; // no se borró: la sesión sigue igual
+      throw error;
+    }
+    await endSession();
+  }, [endSession]);
+
   const driverId = driver?.id;
 
   // 2) Escuchar el estado en Firestore mientras haya sesión.
@@ -79,8 +96,11 @@ export function DriverProvider({ children }) {
         setConnection(fromServer ? 'online' : 'offline');
 
         if (!snap.exists()) {
-          // Desde caché, "no existe" puede ser solo falta de señal: no se cierra la sesión
-          if (fromServer) endSession('Tu registro ya no existe. Puedes registrarte de nuevo.');
+          // Desde caché, "no existe" puede ser solo falta de señal: no se cierra la sesión.
+          // Si el conductor mismo está cancelando (sessionIdRef ya es null), no se muestra el aviso
+          if (fromServer && sessionIdRef.current === driverId) {
+            endSession('Tu registro ya no existe. Puedes registrarte de nuevo.');
+          }
           return;
         }
 
@@ -105,10 +125,14 @@ export function DriverProvider({ children }) {
     return unsubscribe; // limpieza: corta el listener al cambiar de id o desmontar
   }, [driverId, endSession]);
 
-  // setDriver no se expone: la sesión solo cambia con startSession y endSession, que pasan por AsyncStorage
+  // setDriver no se expone: la sesión solo cambia con startSession, endSession y cancelRegistration, que pasan por AsyncStorage
   const value = useMemo(
-    () => ({ driver, restoring, connection, sessionNotice, startSession, endSession, activeTrip, setActiveTrip }),
-    [driver, restoring, connection, sessionNotice, startSession, endSession, activeTrip]
+    () => ({
+      driver, restoring, connection, sessionNotice,
+      startSession, endSession, cancelRegistration,
+      activeTrip, setActiveTrip,
+    }),
+    [driver, restoring, connection, sessionNotice, startSession, endSession, cancelRegistration, activeTrip]
   );
 
   return <DriverContext.Provider value={value}>{children}</DriverContext.Provider>;

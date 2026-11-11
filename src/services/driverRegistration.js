@@ -1,5 +1,5 @@
 // AI-assisted: see docs/AI_LOG.md #8
-import { collection, doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { db } from '../config/configFireBase';
 import { PRICING } from '../config/pricing';
 import { requiresTechReview } from '../utils/registrationValidators';
@@ -104,6 +104,10 @@ export async function submitRegistration({ driverId, personal, vehicle, document
     15000
   );
 }
+
+// Cancelar una solicitud pendiente borra el documento: no se guardan datos personales de quien se retiró.
+// Las fotos quedan en Cloudinary: borrarlas exige la API firmada con el secreto, que solo puede vivir en un backend
+export const deleteRegistration = (driverId) => withTimeout(deleteDoc(doc(db, 'drivers', driverId)), 15000);
 
 // Traduce cada tipo de fallo a un mensaje que el conductor entienda
 export function registrationErrorMessage(error) {
