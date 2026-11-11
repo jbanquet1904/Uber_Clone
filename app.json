@@ -32,6 +32,12 @@
           "cameraPermission": "UberClone usa la cámara para tomar tu foto de perfil, la del vehículo y tus documentos.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "UberClone usa tu ubicación mientras la app está abierta para mostrarte en el mapa y enviarte solicitudes de viaje cercanas."
+        }
       ]
     ]
   }
