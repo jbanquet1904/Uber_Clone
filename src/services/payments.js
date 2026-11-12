@@ -3,16 +3,16 @@ import Constants from 'expo-constants';
 
 // Cliente del backend de pagos. El access_token de Mercado Pago vive SOLO en el backend:
 // la app manda el tripId y el backend lee el monto del viaje en Firestore (la app nunca dice cuánto cobrar)
-const BACKEND_PORT = 3000;
-
-// Si EXPO_PUBLIC_API_URL está vacío, en desarrollo se usa el mismo computador que sirve la app en Expo Go
-// (hostUri = "192.168.1.20:8081"): el backend corre ahí mismo, en el puerto 3000
+// Si EXPO_PUBLIC_API_URL está vacío, en desarrollo se usa el mismo servidor de Expo que sirve la app:
+// metro.config.js reenvía /pagos/... al backend del computador. Funciona en la red local
+// (hostUri = "192.168.1.20:8081") y en modo túnel (hostUri = "abc-anonymous-8081.exp.direct", con https)
 function resolveApiUrl() {
   const fromEnv = process.env.EXPO_PUBLIC_API_URL?.trim().replace(/\/+$/, '');
   if (fromEnv) return fromEnv;
-  const hostUri = Constants.expoConfig?.hostUri ?? Constants.linkingUri ?? '';
-  const host = hostUri.replace(/^\w+:\/\//, '').split(/[:/]/)[0];
-  return host ? `http://${host}:${BACKEND_PORT}` : null;
+  const hostUri = (Constants.expoConfig?.hostUri ?? '').replace(/^\w+:\/\//, '').replace(/\/+$/, '');
+  if (!hostUri) return null;
+  const isLocal = /^(\d{1,3}(\.\d{1,3}){3}|localhost)(:\d+)?$/.test(hostUri);
+  return `${isLocal ? 'http' : 'https'}://${hostUri}/pagos`;
 }
 
 const API_URL = resolveApiUrl();

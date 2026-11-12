@@ -52,6 +52,14 @@ Antes de arrancar, copia `.env.example` como `.env` y llena los valores (ver aba
 
 Escanea el código QR con la cámara del iPhone (o con Expo Go en Android). Si cambias el `.env`, reinicia con `npx expo start -c`: las variables `EXPO_PUBLIC_` se leen al compilar.
 
+**Si el iPhone no abre la app** (se queda cargando o dice que no puede conectarse):
+1. El iPhone y el computador deben estar en la **misma red Wi-Fi**, y los datos móviles no sirven.
+2. En el iPhone, revisa **Ajustes › Privacidad y seguridad › Red local › Expo Go**: debe estar activado.
+3. Si aun así no conecta (por ejemplo, el router aísla los dispositivos), usa el modo túnel, que conecta por internet:
+   ```bash
+   npx expo start --tunnel ngrok
+   ```
+
 ## Variables de entorno
 
 ### App (`.env`; la plantilla es `.env.example`)
@@ -107,7 +115,7 @@ npm --prefix backend test              # pruebas del cobro con dobles (no tocan 
 Antes de arrancarlo, copia `backend/.env.example` como `backend/.env` y pega el `MP_ACCESS_TOKEN` de prueba.
 
 1. **Firestore desde el backend.** Si `GOOGLE_APPLICATION_CREDENTIALS` está vacío, el backend usa la misma configuración web del `.env` de la raíz, y eso funciona mientras Firestore esté en modo de prueba. Para producción hay que usar una cuenta de servicio: en la consola de Firebase, ve a **Configuración del proyecto › Cuentas de servicio › Generar nueva clave privada**, guarda el JSON como `backend/serviceAccountKey.json` (ya está en `.gitignore`: da permisos de administrador) y pon esa ruta en la variable. Así el backend usa Firebase Admin, y las reglas pueden dejar que solo el backend marque un viaje como pagado.
-2. **La app encuentra sola el backend.** En desarrollo usa el mismo computador que sirve la app en Expo Go, en el puerto 3000. Solo hay que llenar `EXPO_PUBLIC_API_URL` si el backend corre en otro lado. Si Windows pregunta por el firewall, permite el acceso en redes privadas.
+2. **La app encuentra sola el backend.** En desarrollo, el servidor de Expo reenvía todo lo que llega a `/pagos/...` al backend del mismo computador (ver `metro.config.js`). Así el iPhone solo necesita llegar a Expo, y funciona también en modo túnel. Solo hay que llenar `EXPO_PUBLIC_API_URL` si el backend corre en otro lado.
 3. **Flujo de cobro:**
    1. Al finalizar el viaje, la app calcula la tarifa final con `calculateFare`.
    2. La app manda al backend solo el `tripId`. El backend lee el monto del viaje en Firestore, crea la preferencia de Checkout Pro y devuelve el enlace de pago.
