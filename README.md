@@ -108,7 +108,7 @@ Todos los comandos se escriben en la raíz del proyecto y funcionan igual en Pow
 ```bash
 npm --prefix backend install
 npm run backend                        # arranca el backend en el puerto 3000
-npm --prefix backend run dev           # igual, pero se reinicia solo al cambiar el código o backend/.env
+npm --prefix backend run dev           # igual, pero se reinicia solo al cambiar el código (si cambias backend/.env, reinícialo)
 npm --prefix backend test              # pruebas del cobro con dobles (no tocan Firebase ni Mercado Pago)
 ```
 
