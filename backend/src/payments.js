@@ -60,6 +60,8 @@ export function createPaymentService({ db, mp, publicUrl, serverTimestamp }) {
 
     const created = await mp.createPreference(preference);
     await tripRef(tripId).update({ paymentPreferenceId: created.id, paymentAmount: amount, paymentStatus: 'pending' });
+    // Respaldo para pruebas: el mismo enlace se puede abrir en una ventana de incógnito del computador
+    console.log(`Enlace de pago del viaje ${tripId} ($${amount}): ${created.init_point}`);
     return { initPoint: created.init_point, preferenceId: created.id, amount };
   }
 

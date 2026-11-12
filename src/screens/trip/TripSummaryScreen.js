@@ -1,5 +1,6 @@
 // AI-assisted: see docs/AI_LOG.md #13
 import { Ionicons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -73,11 +74,13 @@ export default function TripSummaryScreen() {
   };
 
   // 1) el backend crea la preferencia con el monto que lee de Firestore, 2) el pasajero paga en el checkout,
-  // 3) al cerrar el navegador se le pide al backend que confirme el pago con Mercado Pago y actualice el viaje
+  // 3) al cerrar el navegador se le pide al backend que confirme el pago con Mercado Pago y actualice el viaje.
+  // Sesión privada (preferEphemeralSession): el checkout no ve la cuenta de Mercado Pago que el teléfono tenga
+  // abierta. Con una cuenta real, Mercado Pago pide validar identidad; el pago de prueba se hace como invitado
   const handleCheckout = () =>
     run('checkout', async () => {
       const { initPoint } = await createCheckout(trip.id);
-      await WebBrowser.openBrowserAsync(initPoint);
+      await WebBrowser.openAuthSessionAsync(initPoint, Linking.createURL('pago'), { preferEphemeralSession: true });
       await syncPayment(trip.id);
     });
 
