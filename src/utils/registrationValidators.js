@@ -13,6 +13,10 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[A-Za-z]{2,}$/;
 // Un TextInput siempre devuelve texto: se quitan letras, puntos y espacios
 export const onlyDigits = (text) => text.replace(/\D/g, '');
 
+// Las mismas reglas del registro, para editar el perfil sin duplicarlas. AI-assisted: see docs/AI_LOG.md #15
+export const isValidEmail = (value) => EMAIL.test((value ?? '').trim());
+export const isValidPhone = (value) => /^\d{10}$/.test(value ?? '');
+
 const isEmpty = (value) => value === null || value === undefined || String(value).trim() === '';
 
 // Compara año, mes y día: restar solo los años daría 18 a alguien que todavía no los cumple

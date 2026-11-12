@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #6, #8, #9
+// AI-assisted: see docs/AI_LOG.md #6, #8, #9, #15
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import FormScreen from '../../components/FormScreen';
@@ -9,6 +9,7 @@ import PhotoField from '../../components/form/PhotoField';
 import TextField from '../../components/form/TextField';
 import { useRegistration } from '../../context/RegistrationContext';
 import { useDriver } from '../../context/DriverContext';
+import { SUPPORTED_LANGUAGES, useI18n } from '../../i18n';
 import { PRICING } from '../../config/pricing';
 import { onlyDigits, requiresTechReview } from '../../utils/registrationValidators';
 import { newDriverId, registrationErrorMessage, submitRegistration } from '../../services/driverRegistration';
@@ -21,6 +22,7 @@ export default function DocumentsScreen({ navigation }) {
   const { personal, vehicle, documents, documentsErrors, touched, pendingTabs, updateDocuments, touchField, touchAll } =
     useRegistration();
   const { startSession } = useDriver();
+  const { setLanguage } = useI18n();
 
   const submittingRef = useRef(false); // candado inmediato: dos toques seguidos entran antes de que el botón se deshabilite
   const driverIdRef = useRef(null); // mismo ID en todos los reintentos
@@ -76,6 +78,8 @@ export default function DocumentsScreen({ navigation }) {
       });
       // Guarda la sesión en el teléfono. Si falla cae en el catch y el reintento no duplica nada (mismo ID, fotos en caché).
       // Si sale bien no se suelta el candado: el RootNavigator desmonta el registro
+      // El idioma elegido en el registro pasa a ser la preferencia de la app
+      if (SUPPORTED_LANGUAGES.includes(personal.language)) setLanguage(personal.language);
       await startSession({ id: driverIdRef.current, status: 'pending' });
     } catch (error) {
       console.warn('Error al enviar el registro:', error);
@@ -83,7 +87,7 @@ export default function DocumentsScreen({ navigation }) {
       submittingRef.current = false;
       setSubmitting(false);
     }
-  }, [canSubmit, personal, vehicle, documents, startSession]);
+  }, [canSubmit, personal, vehicle, documents, startSession, setLanguage]);
 
   const expiryField = (field, label) => (
     <DateField

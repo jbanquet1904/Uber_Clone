@@ -1,17 +1,24 @@
-// AI-assisted: see docs/AI_LOG.md #10
+// AI-assisted: see docs/AI_LOG.md #10, #11
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
-import MapView from 'react-native-maps';
+import { ActivityIndicator, AppState, Pressable, StyleSheet, Switch, Text, Vibration, View } from 'react-native';
+import MapView, { Marker } from '../../components/Map';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import IncomingRequestCard from '../../components/IncomingRequestCard';
 import PrimaryButton from '../../components/PrimaryButton';
 import { useDriver } from '../../context/DriverContext';
 import { useDriverLocation } from '../../hooks/useDriverLocation';
 import { useLocationPublisher } from '../../hooks/useLocationPublisher';
+import { useTripRequests } from '../../hooks/useTripRequests';
+import { useI18n } from '../../i18n';
+import { createSimulatedTrip } from '../../services/devTripSimulator';
 import { markUnavailable } from '../../services/driverLocation';
+import { acceptTrip, declineTrip, TripUnavailableError } from '../../services/trips';
 import { colors } from '../../theme';
+import { distanceMeters, toLatLng } from '../../utils/geo';
 
 const AVAILABILITY_KEY = '@uberclone/last-availability';
 const DELTA = { latitudeDelta: 0.01, longitudeDelta: 0.01 };
@@ -21,18 +28,24 @@ const saveAvailability = (driverId, available) =>
   AsyncStorage.setItem(AVAILABILITY_KEY, JSON.stringify({ driverId, available })).catch(() => {});
 
 export default function HomeScreen() {
-  const { driver } = useDriver();
+  const { t } = useI18n();
+  const { driver, startTrip } = useDriver();
   const driverId = driver?.id; // un instante es null al cerrar la sesión, antes de que el navegador quite la pantalla
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const mapRef = useRef(null);
   const userLocationRef = useRef(null);
+  const coordsRef = useRef(null);
   const toggledRef = useRef(false); // el conductor ya tocó el interruptor en esta apertura
+  const acceptingRef = useRef(false); // candado contra el doble toque en Aceptar
 
   const [inForeground, setInForeground] = useState(AppState.currentState !== 'background');
   const [isAvailable, setIsAvailable] = useState(false); // lo que el conductor quiere
   const [wasAvailable, setWasAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [requestBusy, setRequestBusy] = useState(false);
+  const [requestError, setRequestError] = useState(null);
+  const [simulating, setSimulating] = useState(false);
 
   // 'inactive' (Centro de control, una llamada, el propio diálogo de permisos) no cuenta como salir
   useEffect(() => {
@@ -48,6 +61,13 @@ export default function HomeScreen() {
     enabled: online,
     onLocation: handleLocation,
   });
+  // Las ofertas solo se escuchan estando Disponible: la tarjeta va sobre el mapa y no en un modal,
+  // porque un modal le quitaría el foco a Inicio y el conductor quedaría No disponible justo al decidir
+  const { request, deadline, error: requestsError, dismiss } = useTripRequests({ driverId, enabled: online });
+
+  useEffect(() => {
+    coordsRef.current = coords;
+  }, [coords]);
 
   // Al abrir: si la última vez estaba Disponible, la sesión anterior se cortó sin apagar (conductor "fantasma")
   useEffect(() => {
@@ -78,6 +98,27 @@ export default function HomeScreen() {
     if (driverId && toggledRef.current) saveAvailability(driverId, isAvailable);
   }, [driverId, isAvailable]);
 
+  // Aviso y encuadre del mapa: solo cuando llega una solicitud nueva (cambia el id)
+  const requestId = request?.id;
+  const originLat = request?.origin.lat;
+  const originLng = request?.origin.lng;
+  useEffect(() => {
+    if (!requestId) return;
+    // Vibración en primer plano: en Expo Go no hay notificaciones push, y en segundo plano el conductor queda No disponible
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    Vibration.vibrate();
+    const here = userLocationRef.current ?? coordsRef.current;
+    if (here) {
+      mapRef.current?.fitToCoordinates(
+        [
+          { latitude: here.latitude, longitude: here.longitude },
+          { latitude: originLat, longitude: originLng },
+        ],
+        { edgePadding: { top: 80, right: 60, bottom: 460, left: 60 }, animated: true }
+      );
+    }
+  }, [requestId, originLat, originLng]);
+
   // Nunca se restaura Disponible solo: es un compromiso de aceptar viajes y lo decide el conductor
   const handleToggle = useCallback(
     async (next) => {
@@ -96,6 +137,54 @@ export default function HomeScreen() {
     },
     [requestPermission]
   );
+
+  const handleAccept = useCallback(async () => {
+    if (!request || acceptingRef.current) return;
+    acceptingRef.current = true;
+    setRequestBusy(true);
+    setRequestError(null);
+    try {
+      await acceptTrip(request.id, driverId); // 1) asegurar el viaje con la transacción
+      await startTrip(request.id); // 2) el Stack del viaje cambia solo: Inicio se desmonta y queda No disponible
+    } catch (err) {
+      if (err instanceof TripUnavailableError) {
+        dismiss(request.id);
+        setRequestError(t('request.gone'));
+      } else {
+        console.warn('No se pudo aceptar:', err);
+        setRequestError(t('request.acceptError'));
+      }
+    } finally {
+      acceptingRef.current = false;
+      setRequestBusy(false);
+    }
+  }, [request, driverId, startTrip, dismiss, t]);
+
+  const rejectRequest = useCallback(
+    (reason) => {
+      if (!request) return;
+      dismiss(request.id); // desaparece ya, aunque no haya señal
+      declineTrip(request.id, driverId, reason).catch((e) => console.warn('No se pudo rechazar:', e));
+    },
+    [request, driverId, dismiss]
+  );
+  const handleDecline = useCallback(() => rejectRequest('declined'), [rejectRequest]);
+  const handleExpire = useCallback(() => rejectRequest('timeout'), [rejectRequest]);
+
+  const simulateRequest = async () => {
+    const here = userLocationRef.current ?? coords;
+    if (!here || simulating) return;
+    setSimulating(true);
+    setRequestError(null);
+    try {
+      await createSimulatedTrip(driverId, here);
+    } catch (err) {
+      console.warn('No se pudo crear la solicitud de prueba:', err);
+      setRequestError(t('home.simulateError'));
+    } finally {
+      setSimulating(false);
+    }
+  };
 
   // Usa la posición que reporta el mapa: funciona aunque no esté Disponible
   const recenter = () => {
@@ -119,7 +208,12 @@ export default function HomeScreen() {
     );
   }
 
-  if (!coords) return <CenteredLoader text={error ?? 'Buscando tu ubicación…'} />;
+  if (!coords) return <CenteredLoader text={error ?? t('home.searching')} />;
+
+  // Distancia en línea recta al punto de recogida, con la última posición del GPS
+  const pickupKm = request ? distanceMeters(coords, toLatLng(request.origin)) / 1000 : null;
+  const visibleError =
+    requestError ?? (requestsError ? t(`home.requestsError.${requestsError}`) : null) ?? (isAvailable ? publishError && t('home.publishError') : null);
 
   return (
     <View style={styles.screen}>
@@ -133,45 +227,67 @@ export default function HomeScreen() {
           const point = e.nativeEvent.coordinate;
           if (point) userLocationRef.current = point;
         }}
-      />
+      >
+        {request && <Marker coordinate={toLatLng(request.origin)} title={t('request.pickup')} pinColor={colors.success} />}
+      </MapView>
+
+      {/* Solo existe en desarrollo (Expo Go): hace el papel de la app del pasajero */}
+      {__DEV__ && isAvailable && !request && (
+        <Pressable style={styles.devButton} onPress={simulateRequest} disabled={simulating}>
+          <Text style={styles.devText}>{simulating ? t('home.simulating') : t('home.simulate')}</Text>
+        </Pressable>
+      )}
 
       {/* box-none: los toques que no caen en el botón o la tarjeta llegan al mapa */}
       <View style={[styles.bottom, { bottom: insets.bottom + 16 }]} pointerEvents="box-none">
-        <Pressable style={styles.recenter} onPress={recenter} hitSlop={8}>
-          <Ionicons name="locate" size={22} color={colors.primary} />
-        </Pressable>
-
-        <View style={styles.card}>
-          {wasAvailable && !isAvailable && (
-            <Pressable onPress={() => handleToggle(true)} style={styles.banner}>
-              <Text style={styles.bannerText}>La última vez estabas Disponible. Toca aquí para conectarte de nuevo.</Text>
+        {request ? (
+          <IncomingRequestCard
+            key={request.id} // otra solicitud = tarjeta nueva, con su propio temporizador
+            trip={request}
+            deadline={deadline}
+            pickupKm={pickupKm}
+            busy={requestBusy}
+            onAccept={handleAccept}
+            onDecline={handleDecline}
+            onExpire={handleExpire}
+          />
+        ) : (
+          <>
+            <Pressable style={styles.recenter} onPress={recenter} hitSlop={8} accessibilityLabel={t('home.recenter')}>
+              <Ionicons name="locate" size={22} color={colors.primary} />
             </Pressable>
-          )}
 
-          <View style={styles.row}>
-            <View style={styles.flex}>
-              <Text style={[styles.statusTitle, isAvailable && styles.statusOn]}>
-                {isAvailable ? 'Disponible' : 'No disponible'}
-              </Text>
-              <Text style={styles.statusText}>
-                {isAvailable ? 'Recibirás solicitudes de viaje cercanas.' : 'Actívate para empezar a recibir solicitudes.'}
-              </Text>
+            <View style={styles.card}>
+              {wasAvailable && !isAvailable && (
+                <Pressable onPress={() => handleToggle(true)} style={styles.banner}>
+                  <Text style={styles.bannerText}>{t('home.lastAvailable')}</Text>
+                </Pressable>
+              )}
+
+              <View style={styles.row}>
+                <View style={styles.flex}>
+                  <Text style={[styles.statusTitle, isAvailable && styles.statusOn]}>
+                    {isAvailable ? t('home.available') : t('home.unavailable')}
+                  </Text>
+                  <Text style={styles.statusText}>{isAvailable ? t('home.availableHint') : t('home.unavailableHint')}</Text>
+                </View>
+                {busy ? (
+                  <ActivityIndicator color={colors.primary} />
+                ) : (
+                  <Switch
+                    value={isAvailable}
+                    onValueChange={handleToggle}
+                    trackColor={{ true: colors.success }}
+                    accessibilityLabel={t('home.available')}
+                  />
+                )}
+              </View>
+
+              {visibleError ? <Text style={styles.error}>{visibleError}</Text> : null}
+              {error ? <Text style={styles.error}>{error}</Text> : null}
             </View>
-            {busy ? (
-              <ActivityIndicator color={colors.primary} />
-            ) : (
-              <Switch
-                value={isAvailable}
-                onValueChange={handleToggle}
-                trackColor={{ true: colors.success }}
-                accessibilityLabel="Disponible"
-              />
-            )}
-          </View>
-
-          {isAvailable && publishError ? <Text style={styles.error}>{publishError}</Text> : null}
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-        </View>
+          </>
+        )}
       </View>
     </View>
   );
@@ -188,17 +304,18 @@ function CenteredLoader({ text }) {
 
 // El permiso se pide con una explicación antes: en iPhone el sistema pregunta una sola vez
 function PermissionPanel({ servicesEnabled, permission, onRequest, onOpenSettings }) {
+  const { t } = useI18n();
   let text;
   let action = null;
 
   if (!servicesEnabled) {
-    text = 'Los servicios de ubicación del teléfono están apagados. Actívalos en Ajustes › Privacidad y seguridad › Localización.';
+    text = t('permission.servicesOff');
   } else if (permission === 'blocked') {
-    text = 'Negaste el acceso a tu ubicación. Para conducir necesitas activarlo en los Ajustes de la app.';
-    action = { title: 'Abrir Ajustes', onPress: onOpenSettings };
+    text = t('permission.blocked');
+    action = { title: t('permission.openSettings'), onPress: onOpenSettings };
   } else {
-    text = 'Necesitamos tu ubicación mientras usas la app para mostrarte en el mapa y enviarte solicitudes cercanas.';
-    action = { title: 'Permitir ubicación', onPress: onRequest };
+    text = t('permission.explain');
+    action = { title: t('permission.allow'), onPress: onRequest };
   }
 
   return (
@@ -222,7 +339,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16, backgroundColor: colors.background },
   panelText: { fontSize: 15, color: colors.text, textAlign: 'center', lineHeight: 22 },
   panelAction: { alignSelf: 'stretch' },
-  bottom: { position: 'absolute', left: 16, right: 16, gap: 12 },
+  bottom: { position: 'absolute', left: 12, right: 12, gap: 12 },
   recenter: {
     alignSelf: 'flex-end', width: 44, height: 44, borderRadius: 22,
     backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center',
@@ -236,4 +353,9 @@ const styles = StyleSheet.create({
   statusOn: { color: colors.success },
   statusText: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
   error: { fontSize: 13, color: colors.error },
+  devButton: {
+    position: 'absolute', top: 12, alignSelf: 'center', paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 20, backgroundColor: '#1C2430CC',
+  },
+  devText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 });

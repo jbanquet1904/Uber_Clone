@@ -1,4 +1,4 @@
-// AI-assisted: see docs/AI_LOG.md #2, #9
+// AI-assisted: see docs/AI_LOG.md #2, #9, #11, #15
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
@@ -6,6 +6,10 @@ import { db } from '../config/configFireBase';
 import { deleteRegistration } from '../services/driverRegistration';
 
 const SESSION_KEY = '@uberclone/driver-session';
+// Solo el id del viaje activo: el estado real siempre lo manda Firestore
+const TRIP_KEY = '@uberclone/active-trip';
+// Al llegar a uno de estos estados, el viaje deja de ser del conductor. "paid" no está: el resumen necesita ver el pago
+const ENDED_TRIP_STATUSES = ['cancelled', 'rejected'];
 const DriverContext = createContext(null);
 
 async function readSession() {
@@ -27,20 +31,24 @@ const writeSession = ({ id, status }) => AsyncStorage.setItem(SESSION_KEY, JSON.
 
 export function DriverProvider({ children }) {
   const [driver, setDriver] = useState(null);
+  // El documento completo del conductor, solo en memoria (para Perfil). Sale del mismo listener: no cuesta lecturas extra
+  const [profile, setProfile] = useState(null);
   const [restoring, setRestoring] = useState(true); // "todavía no sé": evita que se vea el registro un instante
   const [connection, setConnection] = useState('online'); // 'online' | 'offline' | 'error'
   const [sessionNotice, setSessionNotice] = useState(null);
+  const [activeTripId, setActiveTripId] = useState(null);
   const [activeTrip, setActiveTrip] = useState(null);
   // id de la sesión vigente, sin esperar un render: un snapshot que llega mientras se cierra la sesión no la vuelve a guardar
   const sessionIdRef = useRef(null);
 
-  // 1) Restaurar la sesión guardada al abrir la app
+  // 1) Restaurar la sesión y el viaje activo guardados al abrir la app
   useEffect(() => {
     let cancelled = false;
-    readSession().then((session) => {
+    Promise.all([readSession(), AsyncStorage.getItem(TRIP_KEY).catch(() => null)]).then(([session, tripId]) => {
       if (cancelled) return;
       sessionIdRef.current = session?.id ?? null;
       setDriver(session);
+      setActiveTripId(session ? tripId : null);
       setRestoring(false);
     });
     return () => {
@@ -58,8 +66,10 @@ export function DriverProvider({ children }) {
 
   const endSession = useCallback(async (notice = null) => {
     sessionIdRef.current = null;
-    await AsyncStorage.removeItem(SESSION_KEY).catch((error) => console.warn(error));
+    await AsyncStorage.multiRemove([SESSION_KEY, TRIP_KEY]).catch((error) => console.warn(error));
     setActiveTrip(null);
+    setActiveTripId(null);
+    setProfile(null);
     setConnection('online');
     setSessionNotice(notice);
     setDriver(null);
@@ -80,6 +90,18 @@ export function DriverProvider({ children }) {
     }
     await endSession();
   }, [endSession]);
+
+  // Al aceptar: si el disco falla, el viaje sigue en memoria, porque en Firestore ya es del conductor
+  const startTrip = useCallback(async (tripId) => {
+    await AsyncStorage.setItem(TRIP_KEY, tripId).catch((error) => console.warn(error));
+    setActiveTripId(tripId);
+  }, []);
+
+  const clearTrip = useCallback(async () => {
+    await AsyncStorage.removeItem(TRIP_KEY).catch((error) => console.warn(error));
+    setActiveTrip(null);
+    setActiveTripId(null);
+  }, []);
 
   const driverId = driver?.id;
 
@@ -104,7 +126,9 @@ export function DriverProvider({ children }) {
           return;
         }
 
-        const { status, rejectionReason = null } = snap.data();
+        const data = snap.data();
+        const { status, rejectionReason = null } = data;
+        setProfile(data);
         setDriver((prev) =>
           prev?.id === driverId && (prev.status !== status || prev.rejectionReason !== rejectionReason)
             ? { ...prev, status, rejectionReason }
@@ -125,14 +149,44 @@ export function DriverProvider({ children }) {
     return unsubscribe; // limpieza: corta el listener al cambiar de id o desmontar
   }, [driverId, endSession]);
 
+  // 3) Escuchar el viaje activo: su status decide qué pantalla del viaje se muestra
+  useEffect(() => {
+    if (!activeTripId || !driverId) return undefined;
+
+    const unsubscribe = onSnapshot(
+      doc(db, 'trips', activeTripId),
+      { includeMetadataChanges: true },
+      (snap) => {
+        const fromServer = !snap.metadata.fromCache;
+        if (!snap.exists()) {
+          if (fromServer) clearTrip(); // borrado de verdad
+          return;
+        }
+        // 'estimate': mientras el servidor no confirma, un serverTimestamp() da una hora estimada y no null
+        const trip = { id: snap.id, ...snap.data({ serverTimestamps: 'estimate' }) };
+        const ended = ENDED_TRIP_STATUSES.includes(trip.status) || trip.driverId !== driverId;
+        // El caché puede traer la versión de antes de aceptar (requested, driverId null): solo el servidor decide soltarlo
+        if (ended) {
+          if (fromServer) clearTrip();
+          return;
+        }
+        setActiveTrip(trip);
+      },
+      (error) => console.warn('No se pudo escuchar el viaje activo:', error)
+    );
+
+    return unsubscribe;
+  }, [activeTripId, driverId, clearTrip]);
+
   // setDriver no se expone: la sesión solo cambia con startSession, endSession y cancelRegistration, que pasan por AsyncStorage
   const value = useMemo(
     () => ({
-      driver, restoring, connection, sessionNotice,
+      driver, profile, restoring, connection, sessionNotice,
       startSession, endSession, cancelRegistration,
-      activeTrip, setActiveTrip,
+      activeTripId, activeTrip, startTrip, clearTrip,
     }),
-    [driver, restoring, connection, sessionNotice, startSession, endSession, cancelRegistration, activeTrip]
+    [driver, profile, restoring, connection, sessionNotice, startSession, endSession, cancelRegistration,
+      activeTripId, activeTrip, startTrip, clearTrip]
   );
 
   return <DriverContext.Provider value={value}>{children}</DriverContext.Provider>;

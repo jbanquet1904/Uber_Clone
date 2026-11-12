@@ -38,7 +38,8 @@
         {
           "locationWhenInUsePermission": "UberClone usa tu ubicación mientras la app está abierta para mostrarte en el mapa y enviarte solicitudes de viaje cercanas."
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }
