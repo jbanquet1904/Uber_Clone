@@ -1,5 +1,6 @@
-// AI-assisted: see docs/AI_LOG.md #3
+// AI-assisted: see docs/AI_LOG.md #3, #9, #15
 import { useCallback, useMemo, useRef, useState } from 'react';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import FormScreen from '../../components/FormScreen';
 import PrimaryButton from '../../components/PrimaryButton';
 import PhotoField from '../../components/form/PhotoField';
@@ -7,13 +8,17 @@ import TextField from '../../components/form/TextField';
 import DateField from '../../components/form/DateField';
 import SelectField from '../../components/form/SelectField';
 import { useRegistration } from '../../context/RegistrationContext';
+import { useDriver } from '../../context/DriverContext';
 import { GENDERS, LANGUAGES, MAX_NAME_LENGTH, MIN_DRIVER_AGE } from '../../config/registrationOptions';
 import { onlyDigits } from '../../utils/registrationValidators';
+import { colors } from '../../theme';
 
 const FIELDS = ['profilePhoto', 'fullName', 'documentNumber', 'phone', 'birthDate', 'gender', 'email', 'language'];
 
 export default function PersonalDataScreen({ navigation }) {
   const { personal, personalErrors, touched, isPersonalValid, updatePersonal, touchField, touchAll } = useRegistration();
+  // Aviso de por qué volvió al registro, por ejemplo si borraron su documento en la base de datos
+  const { sessionNotice } = useDriver();
   const [triedNext, setTriedNext] = useState(false);
   const documentRef = useRef(null);
   const phoneRef = useRef(null);
@@ -45,8 +50,16 @@ export default function PersonalDataScreen({ navigation }) {
 
   return (
     <FormScreen
-      notice={triedNext && !isPersonalValid ? 'Revisa los campos marcados en rojo.' : null}
-      footer={<PrimaryButton title="Siguiente: Vehículo" onPress={handleNext} />}
+      notice={triedNext && !isPersonalValid ? 'Revisa los campos marcados en rojo.' : sessionNotice}
+      footer={
+        <>
+          <PrimaryButton title="Siguiente: Vehículo" onPress={handleNext} />
+          {/* Login está en el Stack padre: navigate sube solo hasta el navegador que tiene esa pantalla */}
+          <Pressable onPress={() => navigation.navigate('Login')} hitSlop={8} style={styles.loginLink}>
+            <Text style={styles.loginText}>¿Ya te registraste? Ingresa</Text>
+          </Pressable>
+        </>
+      }
     >
       <PhotoField
         label="Foto de perfil"
@@ -150,3 +163,8 @@ export default function PersonalDataScreen({ navigation }) {
     </FormScreen>
   );
 }
+
+const styles = StyleSheet.create({
+  loginLink: { alignItems: 'center', paddingTop: 12 },
+  loginText: { fontSize: 14, fontWeight: '600', color: colors.primary },
+});
