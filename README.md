@@ -45,9 +45,10 @@ Requisitos: Node.js 20 o superior y la app **Expo Go** en el teléfono. Para ent
 
 ```bash
 npm install
-cp .env.example .env      # y llena los valores (ver abajo)
 npx expo start -c
 ```
+
+Antes de arrancar, copia `.env.example` como `.env` y llena los valores (ver abajo).
 
 Escanea el código QR con la cámara del iPhone (o con Expo Go en Android). Si cambias el `.env`, reinicia con `npx expo start -c`: las variables `EXPO_PUBLIC_` se leen al compilar.
 
@@ -94,12 +95,16 @@ Estados del viaje: `requested` → `accepted` → `driver_arriving` → `in_prog
 
 ## Backend de pagos
 
+Todos los comandos se escriben en la raíz del proyecto y funcionan igual en PowerShell, cmd o bash:
+
 ```bash
-cd backend && npm install && cd ..
-cp backend/.env.example backend/.env   # pega el MP_ACCESS_TOKEN de prueba
-npm run backend                        # desde la raíz: arranca el backend en el puerto 3000
+npm --prefix backend install
+npm run backend                        # arranca el backend en el puerto 3000
+npm --prefix backend run dev           # igual, pero se reinicia solo al cambiar el código o backend/.env
 npm --prefix backend test              # pruebas del cobro con dobles (no tocan Firebase ni Mercado Pago)
 ```
+
+Antes de arrancarlo, copia `backend/.env.example` como `backend/.env` y pega el `MP_ACCESS_TOKEN` de prueba.
 
 1. **Firestore desde el backend.** Si `GOOGLE_APPLICATION_CREDENTIALS` está vacío, el backend usa la misma configuración web del `.env` de la raíz, y eso funciona mientras Firestore esté en modo de prueba. Para producción hay que usar una cuenta de servicio: en la consola de Firebase, ve a **Configuración del proyecto › Cuentas de servicio › Generar nueva clave privada**, guarda el JSON como `backend/serviceAccountKey.json` (ya está en `.gitignore`: da permisos de administrador) y pon esa ruta en la variable. Así el backend usa Firebase Admin, y las reglas pueden dejar que solo el backend marque un viaje como pagado.
 2. **La app encuentra sola el backend.** En desarrollo usa el mismo computador que sirve la app en Expo Go, en el puerto 3000. Solo hay que llenar `EXPO_PUBLIC_API_URL` si el backend corre en otro lado. Si Windows pregunta por el firewall, permite el acceso en redes privadas.
