@@ -16,16 +16,26 @@ const RETURN_TEXT = {
   rejected: ['Pago rechazado', 'El pago no se aprobó. Cierra esta ventana e intenta de nuevo o paga en efectivo.'],
 };
 
-export function createApp({ payments, webhookSecret }) {
+// Si Firestore o Mercado Pago no responden, el backend contesta con un error claro en vez de dejar a la app esperando
+function withTimeout(promise, ms) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new HttpError(504, 'El servidor de pagos no pudo conectarse a la base de datos o a Mercado Pago. Intenta de nuevo.')), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+export function createApp({ payments, webhookSecret, timeoutMs = 12000 }) {
   const app = express();
   app.use(express.json());
 
   const handle = (fn) => async (req, res) => {
     try {
-      res.json(await fn(req));
+      res.json(await withTimeout(fn(req), timeoutMs));
     } catch (error) {
       const status = error instanceof HttpError ? error.status : error.status === 404 ? 404 : 502;
       if (!(error instanceof HttpError)) console.error(error);
+      else if (status >= 500) console.error(error.message);
       res.status(status).json({ error: error instanceof HttpError ? error.message : 'No se pudo procesar el pago. Intenta de nuevo.' });
     }
   };

@@ -28,7 +28,9 @@ async function createClientDb(env) {
   if (!config.projectId) throw new Error('No se encontró la configuración de Firebase: revisa el .env de la raíz del proyecto.');
 
   const { initializeApp } = await import('firebase/app');
-  const { doc, getDoc, getFirestore, runTransaction, serverTimestamp, updateDoc } = await import('firebase/firestore');
+  // Firestore Lite habla por HTTPS normal (como un navegador). El SDK completo usa gRPC en Node, y en algunas
+  // redes esa conexión se queda colgada (ETIMEDOUT) aunque la app sí funcione. Lite tiene todo lo que usa el backend
+  const { doc, getDoc, getFirestore, runTransaction, serverTimestamp, updateDoc } = await import('firebase/firestore/lite');
   const firestore = getFirestore(initializeApp(config));
   const wrap = (snap) => ({ exists: snap.exists(), data: () => snap.data() });
 

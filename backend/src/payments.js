@@ -26,6 +26,8 @@ export function createPaymentService({ db, mp, publicUrl, serverTimestamp }) {
 
   async function readTrip(tripId) {
     if (typeof tripId !== 'string' || !tripId) throw new HttpError(400, 'Falta el tripId.');
+    // Solo ids como los que crea Firestore: sin "/" (no se puede saltar a otra colección) ni __reservados__
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(tripId) || /^__.*__$/.test(tripId)) throw new HttpError(400, 'El tripId no es válido.');
     const snap = await tripRef(tripId).get();
     if (!snap.exists) throw new HttpError(404, 'El viaje no existe.');
     return snap.data();

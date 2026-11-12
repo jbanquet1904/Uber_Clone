@@ -87,6 +87,8 @@ test('createCheckout rechaza viajes sin terminar, ya pagados o en efectivo', asy
   await assert.rejects(service({ t1: { ...completedTrip(), paymentMethod: 'cash' } }, mp).createCheckout('t1'), { status: 409 });
   await assert.rejects(service({}, mp).createCheckout('nope'), { status: 404 });
   await assert.rejects(service({}, mp).createCheckout(undefined), { status: 400 });
+  await assert.rejects(service({}, mp).createCheckout('drivers/otro'), { status: 400 });
+  await assert.rejects(service({}, mp).createCheckout('__reservado__'), { status: 400 });
 });
 
 test('syncTrip con pago aprobado marca el viaje como pagado', async () => {
@@ -144,6 +146,23 @@ test('firma x-signature: acepta la correcta y rechaza una alterada', () => {
   assert.equal(isValidSignature({ secret, signatureHeader: `ts=${ts},v1=${v1}`, requestId: 'req-1', dataId: '123' }), true);
   assert.equal(isValidSignature({ secret, signatureHeader: `ts=${ts},v1=${v1}`, requestId: 'req-1', dataId: '124' }), false);
   assert.equal(isValidSignature({ secret, signatureHeader: undefined, requestId: 'req-1', dataId: '123' }), false);
+});
+
+test('API HTTP: si la base de datos no responde, contesta 504 en vez de quedarse esperando', async () => {
+  const hanging = { createCheckout: () => new Promise(() => {}), syncTrip: () => new Promise(() => {}) };
+  const app = createApp({ payments: hanging, webhookSecret: null, timeoutMs: 100 });
+  const server = app.listen(0);
+  try {
+    const res = await fetch(`http://127.0.0.1:${server.address().port}/payments/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tripId: 't1' }),
+    });
+    assert.equal(res.status, 504);
+    assert.match((await res.json()).error, /no pudo conectarse/);
+  } finally {
+    server.close();
+  }
 });
 
 test('API HTTP: checkout, errores en JSON y webhook con firma inválida', async () => {
