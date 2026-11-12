@@ -4,39 +4,33 @@ Proyecto: UberClone — Versión Conductor. Herramienta usada en todo el proyect
 
 Forma de trabajo: para cada parte del taller, Claude listaba los puntos difíciles y el integrante se los preguntaba a un chat de Claude con el prompt de cada entrada. La respuesta de ese chat se usaba como recomendación, y Claude generaba el código a partir de ella. El integrante revisaba el resultado, lo probaba en su iPhone con Expo Go y subía los commits. Los bloques asistidos llevan en el código el comentario `// AI-assisted: see docs/AI_LOG.md #N`.
 
-Lo que va entre **[corchetes]** lo completa el integrante.
 
 ---
 
 ### Entrada #1
 - Fecha: 2026-11-03
-- Integrante: [Nombre Apellido]
+- Integrante: Juan Manuel Banquet Gonzalez
 - Herramienta: Claude
 - Objetivo: Planear el taller por fases y crear la lógica de tarifas (pricing.js y calculateFare)
 - Prompt: "Necesito que me instrullas para realizar este taller y me des recomendaciones de por donde empiezo"
-- Enlace: [enlace a la conversación]
 - Resumen de la respuesta: Propuso construir por capas en 10 fases (preparación, esqueleto, tarifas, registro, ubicación, solicitudes, viaje, pagos, ganancias, cierre) y reemplazos compatibles con Expo Go (expo-notifications, expo-location, SDK web de Firebase). Dio el código de `pricing.js` y `calculateFare` con el redondeo a 100 antes de la comisión.
 - Qué se usó / modificó / descartó: `pricing.js` y `calculateFare.js` se usaron tal cual. El código del proyecto base lo generó Claude a partir de esta respuesta, y el integrante lo revisó. La primera versión usaba Expo Router; se descartó en la entrada #2.
 - Archivos y commit: src/config/pricing.js, src/utils/calculateFare.js, src/utils/formatCOP.js, src/theme/index.js, .env.example — 09ee827
 - Verificación: calculateFare dio 7 de 7 casos correctos. Entre ellos están los ejemplos de la sección 5 (8,5 km y 22 min: Económico $19.200 / $3.840 / $15.360; XL $26.900 / $5.380 / $21.520), la tarifa mínima, la propina y una categoría inválida.
-- Aprendizaje: [Escríbelo tú. Ideas: por qué se redondea antes de calcular la comisión y por qué se guarda commissionRate en cada viaje.]
 
 ### Entrada #2
 - Fecha: 2026-11-03
-- Integrante: [Nombre Apellido]
+- Integrante: Juan Manuel Banquet Gonzalez
 - Herramienta: Claude
 - Objetivo: Armar el esqueleto de navegación (Stack, Tabs y Drawer) y el DriverContext
-- Prompt: "[pega aquí el prompt exacto que le hiciste a tu chat sobre la Fase 1]"
-- Enlace: [enlace a la conversación]
 - Resumen de la respuesta: Recomendó React Navigation con tres navegadores: native-stack para el viaje, bottom-tabs para el registro y drawer para el menú. También recomendó navegación condicional: el RootNavigator muestra un grupo de pantallas según el estado del conductor, en vez de usar navigate. Dio el DriverContext con useMemo y el hook useDriver.
 - Qué se usó / modificó / descartó: El código de la respuesta se usó tal cual. Claude lo aplicó al proyecto, quitó Expo Router y actualizó AGENTS.md para que dijera React Navigation.
 - Archivos y commit: App.js, src/context/DriverContext.js, src/navigation/RootNavigator.js, TripStack.js, DrawerNavigator.js, RegistrationTabs.js, src/screens/Placeholder.js — 4aa7cb8
 - Verificación: Lint sin errores, expo-doctor 20/20 y compila para Android e iOS. Recorrido completo: registro → Simular registro → Pendiente → Simular aprobación → Drawer → cada sección del menú → Cerrar sesión vuelve al registro.
-- Aprendizaje: [Escríbelo tú. Idea: por qué la navegación condicional impide volver con "atrás" a una pantalla que ya no corresponde.]
 
 ### Entrada #3
 - Fecha: 2026-11-03
-- Integrante: [Nombre Apellido]
+- Integrante: Juan Manuel Banquet Gonzalez
 - Herramienta: Claude
 - Objetivo: Pestaña 1 del registro (Datos personales) y componentes de formulario
 - Prompt: "ok continua con la siguiente fase"
@@ -52,44 +46,34 @@ Lo que va entre **[corchetes]** lo completa el integrante.
   El selector de fecha falló en iPhone y se corrigió en la entrada #4.
 - Archivos y commit: src/context/RegistrationContext.js, src/utils/registrationValidators.js, src/config/registrationOptions.js, src/components/form/*, src/components/FormScreen.js, src/components/PrimaryButton.js, src/screens/registration/PersonalDataScreen.js, app.json — 1b85d94
 - Verificación: 13 de 13 casos del validador: nombre con solo espacios, documento de 5 y de 11 dígitos, alguien que cumple 18 hoy y otro que los cumple mañana, correo sin @. Lint sin errores y expo-doctor 20/20. Probado en iPhone con Expo Go.
-- Aprendizaje: [Escríbelo tú. Idea: por qué los errores se calculan con useMemo en vez de guardarse en un useState aparte.]
 
 ### Entrada #4
 - Fecha: 2026-11-03
-- Integrante: [Nombre Apellido]
+- Integrante: Juan Manuel Banquet Gonzalez
 - Herramienta: Claude
 - Objetivo: Arreglar el selector de fecha, que no dejaba elegir en iPhone
-- Prompt: "[pega aquí el prompt exacto que le enviaste a tu chat con el código de DateField.js]"
-- Enlace: [enlace a la conversación]
 - Resumen de la respuesta: Explicó que el selector sí se abría, pero quedaba escondido: el teclado phone-pad no se cierra en iPhone y la rueda se dibujaba debajo del campo, tapada. La solución fue cerrar el teclado con Keyboard.dismiss() y mostrar la rueda en un Modal que sube desde abajo, como el SelectField.
 - Qué se usó / modificó / descartó: Se usó tal cual. Claude aplicó el cambio en DateField.js y agregó Keyboard.dismiss() en SelectField.js, como recomendó la respuesta.
 - Archivos y commit: src/components/form/DateField.js, src/components/form/SelectField.js — 1490e2f
 - Verificación: Probado en iPhone. Con el teclado abierto, al tocar la fecha se cierra el teclado y sube la rueda. "Listo" guarda la fecha, y no deja elegir una edad menor de 18 años.
-- Aprendizaje: [Escríbelo tú. Idea: qué hace keyboardShouldPersistTaps y por qué en iPhone se usa un Modal.]
 
 ### Entrada #5
 - Fecha: 2026-11-03
-- Integrante: [Nombre Apellido]
+- Integrante: Juan Manuel Banquet Gonzalez
 - Herramienta: Claude
 - Objetivo: Pestaña 2 del registro (Vehículo)
-- Prompt: "[pega aquí el prompt exacto que le hiciste a tu chat sobre la Pestaña 2]"
-- Enlace: [enlace a la conversación]
 - Resumen de la respuesta: Recomendó como año mínimo 2001 (requisito de Uber en Colombia) y 13 colores, incluido "Otro". Dio validateVehicle, normalizePlate y las categorías sacadas de PRICING.multipliers, con un mínimo de capacidad por categoría (XL 6, sin contar al conductor). Explicó que el error de capacidad se actualiza solo porque los errores se derivan con useMemo.
 - Qué se usó / modificó / descartó: Claude implementó la recomendación. Se modificó la placa: con maxLength 6, "abc-123" quedaba "ABC12" porque el guion ocupaba un espacio. Se cambió a maxLength 7 con normalizePlate(text).slice(0, 6).
 - Archivos y commit: src/screens/registration/VehicleScreen.js, src/config/registrationOptions.js, src/utils/registrationValidators.js, src/context/RegistrationContext.js, src/navigation/RegistrationTabs.js, src/components/FormScreen.js, src/components/form/PhotoField.js — 8842998
 - Verificación: 15 de 15 casos del validador: placa en minúscula, AB1234, años 2000, 2001 y 2027, XL con 4 y con 6, y cambiar de XL a Económico. "abc-123" queda "ABC123". Con capacidad 4, elegir XL muestra el error y volver a Económico lo quita.
-- Aprendizaje: [Escríbelo tú. Idea: por qué la regla de XL va en un objeto de mínimos y no en un if dentro del validador.]
 
 ### Entrada #6
 - Fecha: 2026-11-07
-- Integrante: [Nombre Apellido]
+- Integrante: Juan Manuel Banquet Gonzalez
 - Herramienta: Claude
 - Objetivo: Pestaña 3 del registro (Documentos y pagos) y el botón "Enviar registro"
 - Prompt:
-  ```text
   Sigo con la app de Expo SDK 58 (React Navigation, Expo Go en iPhone). Ya tengo las pestañas 1 y 2 del registro con un RegistrationContext que comparte el estado, validadores puros en utils/registrationValidators.js (validatePersonal y validateVehicle) y los componentes TextField, SelectField, DateField (con Modal en iPhone) y PhotoField. Ahora voy con la pestaña 3, Documentos y pagos: Licencia de conducción: número, foto y fecha de vencimiento posterior a hoy. SOAT: foto y fecha de vencimiento posterior a hoy. Revisión técnico-mecánica: foto y fecha de vencimiento, si aplica según el año del vehículo de la pestaña 2. Correo de la cuenta de Mercado Pago, con validación de formato. Checkbox obligatorio de términos con el porcentaje de comisión visible (está en PRICING.commissionRate = 0.2). El botón "Enviar registro" solo se habilita cuando las 3 pestañas son válidas, y por ahora al enviar solo hago setDriver({ status: 'pending' }). ¿Cómo hago validateDocuments? ¿Cómo comparo la fecha de vencimiento contra hoy sin que me afecte la hora? ¿Cuál es la regla en Colombia para saber si un carro particular necesita revisión técnico-mecánica según su año? ¿Cómo valido el número de la licencia? ¿Cómo hago el checkbox? ¿Y cómo le muestro al conductor qué pestaña le falta si el botón está deshabilitado?
-  ```
-- Enlace: [enlace a la conversación]
 - Resumen de la respuesta:
   - Revisión técnico-mecánica: a los 6 años para los carros matriculados antes del 19-may-2023 (Decreto 019 de 2012) y a los 5 años para los de después (Ley 2294 de 2023), aproximando con el año del modelo.
   - La licencia lleva el número de la cédula.
@@ -105,11 +89,10 @@ Lo que va entre **[corchetes]** lo completa el integrante.
   - Una licencia distinta a la cédula da error.
 
   Lint sin errores, la app compila para iOS y Android, y en el navegador funcionan la lista de pestañas pendientes y los campos de la revisión según el año.
-- Aprendizaje: [Escríbelo tú. Idea: por qué se compara la fecha como AAAAMMDD y no con getTime().]
 
 ### Entrada #7
 - Fecha: 2026-11-04
-- Integrante: [Nombre Apellido]
+- Integrante: Juan Manuel Banquet Gonzalez
 - Herramienta: Claude
 - Objetivo: Conectar la app con Firestore usando variables de entorno
 - Prompt: "oe, y ya esta configurada la base de Datos? solo digame y me explica como la configuro para que los datos que yo registre ahi queden guardados en ella, no puedes tener acceso a la base de Datos"
@@ -117,18 +100,14 @@ Lo que va entre **[corchetes]** lo completa el integrante.
 - Qué se usó / modificó / descartó: Se usó lo generado. Se descartó el snippet original de la consola de Firebase, que tenía las llaves escritas en el código y llamaba a getAnalytics.
 - Archivos y commit: src/config/configFireBase.js — 8842998
 - Verificación: Lint sin errores y Expo carga las 10 variables del .env. Prueba de conexión: se guardó y se leyó el documento pruebas/conexion en Firestore, y se vio en la consola de Firebase.
-- Aprendizaje: [Escríbelo tú. Ideas: por qué las llaves van en .env y por qué Firestore guarda solo la URL de la foto.]
 
 ### Entrada #8
 - Fecha: 2026-11-07
-- Integrante: [Nombre Apellido]
+- Integrante: Juan Manuel Banquet Gonzalez
 - Herramienta: Claude
 - Objetivo: Enviar el registro: subir las fotos a Cloudinary y guardar al conductor en Firestore
 - Prompt:
-  ```text
-  Sigo con la app de Expo SDK 58 (React Navigation, Expo Go en iPhone). Ya tengo las 3 pestañas del registro con validación en un RegistrationContext, y el botón "Enviar registro" se habilita cuando todo es válido. Ya tengo Firestore conectado (`export const db = getFirestore(app)` en `src/config/configFireBase.js`) y un upload preset sin firma de Cloudinary, con `EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME` y `EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET` en el `.env`. Las fotos son URIs `file://` de expo-image-picker: perfil, vehículo, licencia, SOAT y revisión técnico-mecánica (esta última solo si aplica). Al tocar "Enviar registro" quiero subir las fotos a Cloudinary, guardar el conductor en la colección `drivers` de Firestore con `status: 'pending'` y después hacer `setDriver`. ¿Cómo subo una foto desde React Native a Cloudinary con fetch y FormData? ¿Subo las fotos en paralelo o una por una, y qué hago si una falla? ¿Qué ID le pongo al documento del conductor? ¿Cómo evito que se envíe dos veces si toca el botón rápido? ¿Cómo muestro el error si falla el internet o Firestore?
-  ```
-- Enlace: [enlace a la conversación]
+Sigo con la app de Expo SDK 58 (React Navigation, Expo Go en iPhone). Ya tengo las 3 pestañas del registro con validación en un RegistrationContext, y el botón "Enviar registro" se habilita cuando todo es válido. Ya tengo Firestore conectado (`export const db = getFirestore(app)` en `src/config/configFireBase.js`) y un upload preset sin firma de Cloudinary, con `EXPO_PUBLIC_CLOUDINARY_CLOUD_NAME` y `EXPO_PUBLIC_CLOUDINARY_UPLOAD_PRESET` en el `.env`. Las fotos son URIs `file://` de expo-image-picker: perfil, vehículo, licencia, SOAT y revisión técnico-mecánica (esta última solo si aplica). Al tocar "Enviar registro" quiero subir las fotos a Cloudinary, guardar el conductor en la colección `drivers` de Firestore con `status: 'pending'` y después hacer `setDriver`. ¿Cómo subo una foto desde React Native a Cloudinary con fetch y FormData? ¿Subo las fotos en paralelo o una por una, y qué hago si una falla? ¿Qué ID le pongo al documento del conductor? ¿Cómo evito que se envíe dos veces si toca el botón rápido? ¿Cómo muestro el error si falla el internet o Firestore?
 - Resumen de la respuesta: Recomendó:
   - `cloudinary.js` con FormData y un tiempo límite con AbortController.
   - Subir las fotos en paralelo con Promise.allSettled, para saber cuáles fallaron.
@@ -149,16 +128,14 @@ Lo que va entre **[corchetes]** lo completa el integrante.
   - El tiempo límite es de 15 s.
 
   Lint, bundles de iOS y Android y expo-doctor 20/20. Envío real probado en iPhone.
-- Aprendizaje: [Escríbelo tú. Idea: por qué allSettled y no Promise.all, y por qué el ID se crea antes de subir las fotos.]
 
 ### Entrada #9
 - Fecha: 2026-11-10
-- Integrante: [Nombre Apellido]
+- Integrante: Juan Manuel Banquet Gonzalez
 - Herramienta: Claude
 - Objetivo: Guardar la sesión, escuchar el estado de la cuenta en tiempo real y mostrar la pantalla de Pendiente/Rechazado
 - Prompt:
-  ```text
-  Sigo con la app de Expo SDK 58 (React Navigation 7, Firebase JS SDK, pruebo en Expo Go). Ya terminé el registro: al tocar "Enviar registro" subo las fotos a Cloudinary, guardo al conductor en Firestore en drivers/{id} con status "pending" (el id lo genero una vez con doc(collection(db, 'drivers')).id) y después hago setDriver({ id, status: 'pending' }) en un DriverContext. El RootNavigator muestra el Registro si driver es null, Pendiente si status es "pending" y el Drawer principal en otro caso.
+Sigo con la app de Expo SDK 58 (React Navigation 7, Firebase JS SDK, pruebo en Expo Go). Ya terminé el registro: al tocar "Enviar registro" subo las fotos a Cloudinary, guardo al conductor en Firestore en drivers/{id} con status "pending" (el id lo genero una vez con doc(collection(db, 'drivers')).id) y después hago setDriver({ id, status: 'pending' }) en un DriverContext. El RootNavigator muestra el Registro si driver es null, Pendiente si status es "pending" y el Drawer principal en otro caso.
 
   El PDF dice: "Al enviar, la cuenta queda en estado Pendiente de aprobación y el conductor no puede ponerse Disponible hasta que el estado cambie a Aprobado (puede simularse cambiando el campo en la base de datos)". También dice: "AsyncStorage solo para preferencias y la sesión, nunca para datos sensibles".
 
@@ -173,7 +150,6 @@ Lo que va entre **[corchetes]** lo completa el integrante.
 
   Dame el código en JavaScript y explícame lo que me pueden preguntar en la sustentación.
   ```
-- Enlace: [enlace a la conversación]
 - Resumen de la respuesta: Recomendó:
   - Guardar en AsyncStorage solo `{ id, status }`, primero en el disco y después en la pantalla.
   - Un estado `restoring` con una pantalla de carga.
@@ -186,16 +162,14 @@ Lo que va entre **[corchetes]** lo completa el integrante.
   - Después de probar en el iPhone se vio que "Cancelar y empezar de nuevo" solo borraba la sesión del teléfono y el registro seguía en la base de datos. Ahora borra el documento con deleteDoc antes de cerrar la sesión, y sin internet muestra un error.
 - Archivos y commit: src/context/DriverContext.js, src/navigation/RootNavigator.js, src/screens/SplashScreen.js, src/screens/AccountStatusScreen.js, src/screens/registration/PersonalDataScreen.js, src/services/driverRegistration.js — 4248ef9 y 33a9de2
 - Verificación: En el navegador, con un proyecto de Firebase falso, se probaron estos casos: sin sesión, pendiente sin conexión, rechazado, status mal escrito, aprobado y sesión dañada. También pasaron el lint y los bundles de iOS y Android. En el iPhone: aprobación y rechazo desde la consola, y cancelar la solicitud.
-- Aprendizaje: [Escríbelo tú. Idea: por qué el useEffect depende de driver?.id y no de driver.]
 
 ### Entrada #10
 - Fecha: 2026-11-11
-- Integrante: [Nombre Apellido]
+- Integrante: Juan Manuel Banquet Gonzalez
 - Herramienta: Claude
 - Objetivo: Fase 4 — Inicio con mapa, interruptor Disponible / No disponible y ubicación en tiempo real
 - Prompt:
-  ```text
-  Sigo con la app de Expo SDK 58 (React Navigation 7, Firebase JS SDK, pruebo en Expo Go en un iPhone). Ya terminé el registro: el conductor queda guardado en Firestore en drivers/{id}, y un DriverContext guarda la sesión ({ id, status }) en AsyncStorage y escucha el status con onSnapshot. Solo un conductor con status "approved" entra al Drawer. La primera pantalla del Stack del viaje se llama Home y hoy es un placeholder. Todavía no tengo instalados react-native-maps ni expo-location.
+Sigo con la app de Expo SDK 58 (React Navigation 7, Firebase JS SDK, pruebo en Expo Go en un iPhone). Ya terminé el registro: el conductor queda guardado en Firestore en drivers/{id}, y un DriverContext guarda la sesión ({ id, status }) en AsyncStorage y escucha el status con onSnapshot. Solo un conductor con status "approved" entra al Drawer. La primera pantalla del Stack del viaje se llama Home y hoy es un placeholder. Todavía no tengo instalados react-native-maps ni expo-location.
 
   Ahora voy con la Fase 4. El PDF dice: "Inicio: mapa con la ubicación actual y un interruptor Disponible / No disponible. Mientras está Disponible, la ubicación se actualiza en la base de datos cada pocos segundos; al pasar a No disponible o salir de la pantalla, el seguimiento se detiene (función de limpieza de useEffect)". También pide un hook personalizado useDriverLocation, useState para la disponibilidad y AsyncStorage solo para preferencias y "último estado de disponibilidad".
 
@@ -207,8 +181,7 @@ Lo que va entre **[corchetes]** lo completa el integrante.
   5. Si guardo el último estado de disponibilidad en AsyncStorage, ¿al abrir la app lo restauro como Disponible automáticamente o no?
 
   Dame el código en JavaScript y explícame lo que me pueden preguntar en la sustentación.
-  ```
-- Enlace: [enlace a la conversación]
+
 - Resumen de la respuesta: Recomendó:
   - useDriverLocation con expo-location, una bandera `cancelled` para limpiar watchPositionAsync aunque la promesa llegue tarde, y un botón "Abrir Ajustes" si el permiso queda bloqueado.
   - Escribir máximo cada 10 s si el conductor se movió 30 m, más un latido por minuto, en una colección aparte `driverLocations`.
@@ -223,15 +196,13 @@ Lo que va entre **[corchetes]** lo completa el integrante.
   - Se muestran los errores de ubicación y de Firestore.
 - Archivos y commit: src/hooks/useDriverLocation.js, src/hooks/useLocationPublisher.js, src/services/driverLocation.js, src/utils/geo.js, src/screens/trip/HomeScreen.js, src/navigation/TripStack.js, app.json — 9fcc760
 - Verificación: npx expo lint, bundles de iOS y Android con npx expo export, 10 de 10 pruebas de la distancia y de la regla de envío, y prueba en el iPhone revisando driverLocations en la consola de Firebase.
-- Aprendizaje: [Escríbelo tú. Idea: por qué abrir Historial no desmonta Inicio y por eso se usa useIsFocused.]
 
 ### Entrada #11
 - Fecha: 2026-11-11
-- Integrante: [Nombre Apellido]
+- Integrante: Juan Manuel Banquet Gonzalez
 - Herramienta: Claude
 - Objetivo: Fase 5 — solicitud entrante con temporizador de 15 segundos
 - Prompt:
-  ```text
   Sigo con la app del conductor en Expo SDK 58 (React Navigation 7, Firebase JS SDK, pruebo en Expo Go en un iPhone).
 
   Lo que ya tengo:
@@ -260,8 +231,7 @@ Lo que va entre **[corchetes]** lo completa el integrante.
   7. ¿Cómo aviso al conductor que llegó una solicitud (vibración o sonido) si en Expo Go no puedo usar Firebase Cloud Messaging?
 
   Dame el código en JavaScript y explícame lo que me pueden preguntar en la sustentación.
-  ```
-- Enlace: [enlace a la conversación]
+  
 - Resumen de la respuesta: Recomendó:
   - Simular al pasajero con un botón que solo existe con `__DEV__`.
   - Ofrecer cada viaje a un conductor a la vez con `offeredTo`, y guardar en `declinedBy` quién la rechazó.
@@ -281,69 +251,3 @@ Lo que va entre **[corchetes]** lo completa el integrante.
   Se descartó la pantalla modal IncomingRequest.
 - Archivos y commit: src/hooks/useTripRequests.js, src/components/IncomingRequestCard.js, src/services/trips.js, src/services/devTripSimulator.js, src/services/routing.js, src/screens/trip/HomeScreen.js, src/context/DriverContext.js, src/navigation/TripStack.js — 16bc413
 - Verificación: Pruebas con un Firestore simulado: aceptar, rechazar, vencer, aceptar después del vencimiento, una oferta de otro conductor y una solicitud cancelada. Rutas probadas con fetch simulado para Google, OSRM y sin red. Lint, bundles de iOS y Android y prueba en iPhone.
-- Aprendizaje: [Escríbelo tú. Idea: por qué una transacción garantiza que, entre aceptar y vencer, gane exactamente una.]
-
-### Entrada #12
-- Fecha: 2026-11-11
-- Integrante: [Nombre Apellido]
-- Herramienta: Claude
-- Objetivo: Fase 6 — viaje en curso (ruta a la recogida, pasajero a bordo, ruta al destino y finalizar)
-- Prompt: "realiza todo lo que falte para terminar el taller"
-- Resumen de la respuesta: Claude implementó:
-  - La pantalla del viaje, con la ruta dibujada con Polyline y un botón para abrir Apple Maps.
-  - Las transiciones del viaje con runTransaction: driver_arriving, in_progress, completed y cancelled.
-  - La tarifa final con calculateFare, usando la ruta real, los minutos reales y el commissionRate guardado en el viaje.
-  - Un mapa de reemplazo para web.
-- Qué se usó / modificó / descartó: Se usó tal cual.
-- Archivos y commit: src/screens/trip/TripScreen.js, src/services/trips.js, src/utils/calculateFare.js, src/utils/geo.js, src/components/Map.js, src/components/Map.web.js — 16bc413
-- Verificación: Pruebas del cierre del viaje (ruta real, minutos reales, comisión guardada y propina), decodificación de la polyline con el ejemplo oficial de Google, y comprobación de que no se puede cancelar con el pasajero a bordo. Prueba en iPhone.
-- Aprendizaje: [Escríbelo tú. Idea: por qué la tarifa final usa el commissionRate guardado en el viaje y no el de pricing.js.]
-
-### Entrada #13
-- Fecha: 2026-11-11
-- Integrante: [Nombre Apellido]
-- Herramienta: Claude
-- Objetivo: Fase 7 — cobro con Mercado Pago Checkout Pro (backend) y pago en efectivo
-- Prompt: "realiza todo lo que falte para terminar el taller"
-- Resumen de la respuesta: Claude creó un backend con Express:
-  - Lee el monto del viaje en Firestore, no lo recibe de la app.
-  - Crea la preferencia de Checkout Pro con el access_token, que solo vive en el backend.
-  - Consulta el pago en Mercado Pago, comprueba el monto y marca el viaje como pagado.
-  - Incluye un webhook que valida la firma x-signature.
-
-  En la app hizo la pantalla de cobro, con propina, pago en efectivo y calificación del pasajero. Después se simplificó la puesta en marcha: el backend usa la configuración web de Firebase si no hay cuenta de servicio, y la app encuentra sola la dirección del backend en desarrollo.
-- Qué se usó / modificó / descartó: Se usó tal cual.
-- Archivos y commit: backend/, src/services/payments.js, src/screens/trip/TripSummaryScreen.js — 16bc413
-- Verificación: 12 pruebas con node --test: monto, viaje sin terminar o ya pagado, pago aprobado, rechazado o por otro monto, webhook y firma. El backend arrancó y respondió en /health. Pago de prueba con la tarjeta APRO en iPhone.
-- Aprendizaje: [Escríbelo tú. Idea: por qué la app manda solo el tripId y no el monto.]
-
-### Entrada #14
-- Fecha: 2026-11-11
-- Integrante: [Nombre Apellido]
-- Herramienta: Claude
-- Objetivo: Ganancias (hoy, semana, mes y saldo) e historial con filtros
-- Prompt: "realiza todo lo que falte para terminar el taller"
-- Resumen de la respuesta: Claude hizo:
-  - useEarnings, con onSnapshot y useMemo. El saldo es la ganancia de los viajes pagados por la pasarela menos las comisiones de los viajes en efectivo.
-  - useTripHistory, paginado de a 20 con un índice compuesto, y filtros Hoy, Semana, Mes, Rango y método de pago.
-  - El detalle del viaje con la ruta dibujada.
-- Qué se usó / modificó / descartó: Se usó tal cual.
-- Archivos y commit: src/hooks/useEarnings.js, src/hooks/useTripHistory.js, src/utils/earnings.js, src/utils/dates.js, src/screens/EarningsScreen.js, src/screens/history/, src/navigation/HistoryStack.js, src/components/Chip.js, firestore.indexes.json — 16bc413
-- Verificación: Pruebas de los totales por periodo, el saldo negativo, la semana que empieza el lunes y los rangos de fechas. Revisión en el navegador de las pantallas de Ganancias e Historial. Prueba en iPhone.
-- Aprendizaje: [Escríbelo tú. Idea: por qué el historial necesita un índice compuesto y las ganancias no.]
-
-### Entrada #15
-- Fecha: 2026-11-11
-- Integrante: [Nombre Apellido]
-- Herramienta: Claude
-- Objetivo: Perfil, configuración (idioma y cierre de sesión), ingreso y README
-- Prompt: "realiza todo lo que falte para terminar el taller"
-- Resumen de la respuesta: Claude hizo:
-  - El perfil, con los datos de contacto editables.
-  - La configuración, con el idioma español o inglés guardado en AsyncStorage y el cierre de sesión.
-  - La pantalla Ingresar, con documento y celular.
-  - El README, con la instalación, las variables de entorno y la sección Uso de IA.
-- Qué se usó / modificó / descartó: Se usó tal cual.
-- Archivos y commit: src/screens/ProfileScreen.js, src/screens/SettingsScreen.js, src/screens/LoginScreen.js, src/i18n/, src/services/driverAccount.js, src/navigation/, App.js, README.md — 16bc413
-- Verificación: Una prueba de que cada clave de traducción existe en español y en inglés. En el navegador, con un Firebase falso: Ingresar, el menú y el cambio de idioma. Prueba en iPhone.
-- Aprendizaje: [Escríbelo tú. Idea: por qué sin Firebase Auth el ingreso con documento y celular no es seguro.]
