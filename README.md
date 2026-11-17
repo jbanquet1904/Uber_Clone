@@ -45,8 +45,10 @@ Requisitos: Node.js 20 o superior y la app **Expo Go** en el teléfono. Para ent
 
 ```bash
 npm install
-npx expo start -c
+npm run dev          # enciende el backend de pagos y Expo juntos, en una sola terminal
 ```
+
+`npm run dev` deja el backend corriendo por detrás (sus mensajes salen con `[backend]`) y Expo al frente con el código QR. Ctrl+C apaga los dos. Si el iPhone no se conecta por Wi-Fi, usa `npm run dev -- --tunnel ngrok`. Para Expo solo, sin pagos: `npx expo start -c`.
 
 Antes de arrancar, copia `.env.example` como `.env` y llena los valores (ver abajo).
 

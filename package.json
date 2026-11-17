@@ -39,6 +39,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "dev": "node scripts/dev.mjs",
     "backend": "npm --prefix backend start",
     "ai-log:pdf": "node scripts/export-ai-log.mjs"
   },
