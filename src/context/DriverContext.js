@@ -38,6 +38,8 @@ export function DriverProvider({ children }) {
   const [sessionNotice, setSessionNotice] = useState(null);
   const [activeTripId, setActiveTripId] = useState(null);
   const [activeTrip, setActiveTrip] = useState(null);
+  // Vive solo en memoria: si la app se cierra, al abrirla el conductor decide otra vez si se conecta
+  const [resumeAvailable, setResumeAvailable] = useState(false);
   // id de la sesión vigente, sin esperar un render: un snapshot que llega mientras se cierra la sesión no la vuelve a guardar
   const sessionIdRef = useRef(null);
 
@@ -69,6 +71,7 @@ export function DriverProvider({ children }) {
     await AsyncStorage.multiRemove([SESSION_KEY, TRIP_KEY]).catch((error) => console.warn(error));
     setActiveTrip(null);
     setActiveTripId(null);
+    setResumeAvailable(false);
     setProfile(null);
     setConnection('online');
     setSessionNotice(notice);
@@ -92,8 +95,10 @@ export function DriverProvider({ children }) {
   }, [endSession]);
 
   // Al aceptar: si el disco falla, el viaje sigue en memoria, porque en Firestore ya es del conductor
+  // Solo se acepta estando Disponible: al terminar el viaje, Inicio vuelve a conectarse solo (en la misma sesión de la app)
   const startTrip = useCallback(async (tripId) => {
     await AsyncStorage.setItem(TRIP_KEY, tripId).catch((error) => console.warn(error));
+    setResumeAvailable(true);
     setActiveTripId(tripId);
   }, []);
 
@@ -183,10 +188,10 @@ export function DriverProvider({ children }) {
     () => ({
       driver, profile, restoring, connection, sessionNotice,
       startSession, endSession, cancelRegistration,
-      activeTripId, activeTrip, startTrip, clearTrip,
+      activeTripId, activeTrip, startTrip, clearTrip, resumeAvailable, setResumeAvailable,
     }),
     [driver, profile, restoring, connection, sessionNotice, startSession, endSession, cancelRegistration,
-      activeTripId, activeTrip, startTrip, clearTrip]
+      activeTripId, activeTrip, startTrip, clearTrip, resumeAvailable]
   );
 
   return <DriverContext.Provider value={value}>{children}</DriverContext.Provider>;

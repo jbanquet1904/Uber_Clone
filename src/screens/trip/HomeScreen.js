@@ -29,18 +29,19 @@ const saveAvailability = (driverId, available) =>
 
 export default function HomeScreen() {
   const { t } = useI18n();
-  const { driver, startTrip } = useDriver();
+  const { driver, startTrip, resumeAvailable, setResumeAvailable } = useDriver();
   const driverId = driver?.id; // un instante es null al cerrar la sesión, antes de que el navegador quite la pantalla
   const isFocused = useIsFocused();
   const insets = useSafeAreaInsets();
   const mapRef = useRef(null);
   const userLocationRef = useRef(null);
   const coordsRef = useRef(null);
-  const toggledRef = useRef(false); // el conductor ya tocó el interruptor en esta apertura
+  // Al volver de un viaje, el conductor sigue Disponible (ya lo había decidido): cuenta como si hubiera tocado el interruptor
+  const toggledRef = useRef(resumeAvailable); // el conductor ya tocó el interruptor en esta apertura
   const acceptingRef = useRef(false); // candado contra el doble toque en Aceptar
 
   const [inForeground, setInForeground] = useState(AppState.currentState !== 'background');
-  const [isAvailable, setIsAvailable] = useState(false); // lo que el conductor quiere
+  const [isAvailable, setIsAvailable] = useState(resumeAvailable); // lo que el conductor quiere
   const [wasAvailable, setWasAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [requestBusy, setRequestBusy] = useState(false);
@@ -90,7 +91,8 @@ export default function HomeScreen() {
 
   // Si pierde el permiso o apaga los servicios estando Disponible, se desconecta y no vuelve solo.
   // Se ajusta durante el render (patrón de React) y no en un efecto, para no pintar un render de más
-  if (isAvailable && !(permission === 'granted' && servicesEnabled)) setIsAvailable(false);
+  // ('checking' todavía no se sabe: no cuenta como perderlo)
+  if (isAvailable && permission !== 'checking' && !(permission === 'granted' && servicesEnabled)) setIsAvailable(false);
 
   // El disco sigue a isAvailable, pero solo después de que el conductor tocó el interruptor:
   // al montar vale false y borraría el "true" que necesita la limpieza del fantasma
@@ -126,6 +128,7 @@ export default function HomeScreen() {
       setWasAvailable(false);
       if (!next) {
         setIsAvailable(false);
+        setResumeAvailable(false);
         return;
       }
       setBusy(true);
@@ -135,7 +138,7 @@ export default function HomeScreen() {
         setBusy(false);
       }
     },
-    [requestPermission]
+    [requestPermission, setResumeAvailable]
   );
 
   const handleAccept = useCallback(async () => {
