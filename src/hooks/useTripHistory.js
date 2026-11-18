@@ -7,6 +7,7 @@ export const PAGE_SIZE = 20;
 
 // Historial paginado, del más reciente al más antiguo.
 // driverId + rango de completedAt + orderBy necesita un índice compuesto (está en firestore.indexes.json).
+// Si el índice aún no existe, se usa fetchWithoutIndex (abajo) y el historial funciona igual.
 // Solo entran viajes terminados: los cancelados o rechazados tienen completedAt en null y el rango los deja fuera
 async function fetchPage(driverId, { fromMs, toMs, paymentMethod }, cursor) {
   const q = query(
@@ -19,16 +20,37 @@ async function fetchPage(driverId, { fromMs, toMs, paymentMethod }, cursor) {
     ...(cursor ? [startAfter(cursor)] : []),
     limit(PAGE_SIZE)
   );
-  const snap = await getDocs(q);
-  return {
-    trips: snap.docs.map((d) => ({ id: d.id, ...d.data() })),
-    cursor: snap.docs[snap.docs.length - 1] ?? cursor,
-    hasMore: snap.docs.length === PAGE_SIZE,
-  };
+  try {
+    const snap = await getDocs(q);
+    return {
+      trips: snap.docs.map((d) => ({ id: d.id, ...d.data() })),
+      cursor: snap.docs[snap.docs.length - 1] ?? cursor,
+      hasMore: snap.docs.length === PAGE_SIZE,
+    };
+  } catch (err) {
+    // failed-precondition = el índice compuesto todavía no existe (o se está construyendo).
+    // En vez de mostrar un error, se usa una consulta que no necesita índice y se filtra en el teléfono
+    if (err?.code !== 'failed-precondition') throw err;
+    console.warn('Falta el índice compuesto de trips; el historial se filtra en el teléfono:', err.message);
+    return fetchWithoutIndex(driverId, { fromMs, toMs, paymentMethod });
+  }
 }
 
-// failed-precondition = falta el índice. El mensaje del error trae el enlace para crearlo con un clic
-const errorKind = (err) => (err?.code === 'failed-precondition' ? 'index' : 'connection');
+// Plan B: solo driverId == X (Firestore indexa cada campo solo, así que no pide índice compuesto).
+// Rango, método de pago y orden se aplican aquí. Trae todo de una vez: sin paginación
+async function fetchWithoutIndex(driverId, { fromMs, toMs, paymentMethod }) {
+  const snap = await getDocs(query(collection(db, 'trips'), where('driverId', '==', driverId)));
+  const trips = snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((trip) => {
+      const completedMs = trip.completedAt?.toMillis?.();
+      if (completedMs == null || completedMs < fromMs || completedMs >= toMs) return false;
+      return !paymentMethod || trip.paymentMethod === paymentMethod;
+    })
+    .sort((a, b) => b.completedAt.toMillis() - a.completedAt.toMillis());
+  return { trips, cursor: null, hasMore: false };
+}
+
 
 export function useTripHistory(driverId, { from, to, paymentMethod }) {
   const [reloadToken, setReloadToken] = useState(0);
@@ -53,7 +75,7 @@ export function useTripHistory(driverId, { from, to, paymentMethod }) {
       .catch((err) => {
         if (cancelled) return;
         console.warn('No se pudo cargar el historial:', err.message);
-        setResult({ key, trips: [], hasMore: false, error: errorKind(err) });
+        setResult({ key, trips: [], hasMore: false, error: 'connection' });
       });
     return () => {
       cancelled = true;
